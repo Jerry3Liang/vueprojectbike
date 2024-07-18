@@ -8,7 +8,12 @@
       class="form-control"
       aria-label="Sizing example input"
       aria-describedby="inputGroup-sizing-lg"
+      v-model="search"
+      @change="findKeyWordData(search)"
     />
+    <!-- <button class="btn btn-outline-success" type="button" @click="findKeyWordData(search)">
+      搜尋
+    </button> -->
   </div>
   <div style="margin:">
     <table class="table table-striped">
@@ -68,10 +73,13 @@ const pages = ref(0);
 const totalbike = ref(0);
 const current = ref(1);
 const start = ref(1);
-const rows = ref(20);
+const rows = ref(25);
 const lastPageRows = ref(0);
 
 const bikes = ref(null);
+
+//模糊查詢
+const search = ref('');
 
 onMounted(function () {
   callFindAllBikeStoreList(1);
@@ -92,6 +100,17 @@ function callFindAllBikeStoreList(page) {
     .get('https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json')
     .then(function (response) {
       bikes.value = response.data;
+      let arr = [];
+      for (let i = 0; i < response.data.length; i++) {
+        arr.push(response.data[i].ar);
+      }
+      console.log(arr.length);
+      const keyWordSearch = selectMatchItem(response.data, search.value);
+      if (search.value) {
+        bikes.value = keyWordSearch;
+      }
+      console.log(keyWordSearch.length);
+      console.log(keyWordSearch);
 
       //分頁
       totalbike.value = response.data.length;
@@ -103,6 +122,45 @@ function callFindAllBikeStoreList(page) {
     .catch(function (error) {
       console.log(error);
     });
+}
+
+function findKeyWordData(keyWord) {
+  axiosApi
+    .get('https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json')
+    .then(function (response) {
+      bikes.value = response.data;
+      let arr = [];
+      for (let i = 0; i < response.data.length; i++) {
+        arr.push(response.data[i].ar);
+      }
+      console.log(arr.length);
+      const keyWordSearch = selectMatchItem(response.data, keyWord);
+      if (keyWord) {
+        bikes.value = keyWordSearch;
+      }
+      console.log(keyWordSearch.length);
+      console.log(keyWordSearch);
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
+}
+
+function selectMatchItem(lists, keyWord) {
+  console.log(lists);
+  // let arArr = [];
+  // for(let i =0; i < lists.length; i++){
+
+  // }
+  let resArr = [];
+  lists.filter((list) => {
+    if (list.ar.includes(keyWord)) {
+      console.log(list);
+      resArr.push(list);
+    }
+  });
+
+  return resArr;
 }
 </script>
 
