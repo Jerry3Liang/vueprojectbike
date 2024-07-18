@@ -8,8 +8,7 @@
       class="form-control"
       aria-label="Sizing example input"
       aria-describedby="inputGroup-sizing-lg"
-      v-model="search"
-      @change="findKeyWordData(search)"
+      v-model="keyWord"
     />
     <!-- <button class="btn btn-outline-success" type="button" @click="findKeyWordData(search)">
       搜尋
@@ -23,8 +22,44 @@
           <th scope="col">站點名稱</th>
           <th scope="col">站點所在區域</th>
           <th scope="col">站點地址</th>
-          <th scope="col">總車位數量</th>
-          <th scope="col">可租借的腳踏車數量</th>
+          <th scope="col">
+            <span>總車位數量</span>
+            <span>
+              <button
+                type="button"
+                class="btn btn-outline-info btn-sm"
+                @click="sortTotalBysmallToLarge()"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-info btn-sm"
+                @click="sortTotalByLargeToSmall()"
+              >
+                ↓
+              </button>
+            </span>
+          </th>
+          <th scope="col">
+            <span>可租借的腳踏車數量</span>
+            <span>
+              <button
+                type="button"
+                class="btn btn-outline-info btn-sm"
+                @click="sortAvailableRentBysmallToLarge()"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-info btn-sm"
+                @click="sortAvailableRentByLargeToSmall()"
+              >
+                ↓
+              </button>
+            </span>
+          </th>
           <th scope="col">站點緯度</th>
           <th scope="col">站點經度</th>
           <th scope="col">可歸還的腳踏車數量</th>
@@ -65,8 +100,11 @@
 
 <script setup>
 import axiosApi from 'axios';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import Paginate from 'vuejs-paginate-next';
+
+//來自 API 的資料
+const datas = ref(null);
 
 //分頁
 const pages = ref(0);
@@ -76,12 +114,25 @@ const start = ref(1);
 const rows = ref(25);
 const lastPageRows = ref(0);
 
+//畫面渲染資料
 const bikes = ref(null);
 
 //模糊查詢
-const search = ref('');
+const keyWord = ref('');
 
 onMounted(function () {
+  axiosApi
+    .get('https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json')
+    .then(function (response) {
+      //從 API 獲得的資料賦值給 datas 變數
+      datas.value = response.data;
+
+      //從 API 獲得的資料賦值給 bikes 變數
+      bikes.value = response.data;
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
   callFindAllBikeStoreList(1);
 });
 
@@ -96,71 +147,46 @@ function callFindAllBikeStoreList(page) {
     current.value = 1;
   }
 
-  axiosApi
-    .get('https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json')
-    .then(function (response) {
-      bikes.value = response.data;
-      let arr = [];
-      for (let i = 0; i < response.data.length; i++) {
-        arr.push(response.data[i].ar);
-      }
-      console.log(arr.length);
-      const keyWordSearch = selectMatchItem(response.data, search.value);
-      if (search.value) {
-        bikes.value = keyWordSearch;
-      }
-      console.log(keyWordSearch.length);
-      console.log(keyWordSearch);
+  bikes.value = datas.value.slice(start.value, rows.value + 1);
 
-      //分頁
-      totalbike.value = response.data.length;
-      pages.value = Math.ceil(response.data.length / rows.value);
-      lastPageRows.value = response.data.length % rows.value;
-
-      console.log(response);
-    })
-    .catch(function (error) {
-      console.log(error);
-    });
+  //分頁
+  totalbike.value = datas.value.data.length;
+  pages.value = Math.ceil(datas.value.length / rows.value);
+  lastPageRows.value = datas.value.data.length % rows.value;
 }
 
-function findKeyWordData(keyWord) {
-  axiosApi
-    .get('https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json')
-    .then(function (response) {
-      bikes.value = response.data;
-      let arr = [];
-      for (let i = 0; i < response.data.length; i++) {
-        arr.push(response.data[i].ar);
-      }
-      console.log(arr.length);
-      const keyWordSearch = selectMatchItem(response.data, keyWord);
-      if (keyWord) {
-        bikes.value = keyWordSearch;
-      }
-      console.log(keyWordSearch.length);
-      console.log(keyWordSearch);
-    })
-    .catch(function (error) {
-      console.log(error);
-    });
-}
+watch(
+  //要監聽的物件
+  () => keyWord.value,
+  //監聽到後要實作的方法
+  () => {
+    console.log(keyWord.value);
+    bikes.value = datas.value.filter((data) => data.ar.includes(keyWord.value));
+  }
+);
 
-function selectMatchItem(lists, keyWord) {
-  console.log(lists);
-  // let arArr = [];
-  // for(let i =0; i < lists.length; i++){
-
-  // }
-  let resArr = [];
-  lists.filter((list) => {
-    if (list.ar.includes(keyWord)) {
-      console.log(list);
-      resArr.push(list);
-    }
+function sortTotalBysmallToLarge() {
+  bikes.value = datas.value.sort(function (a, b) {
+    return a.total - b.total;
   });
+}
 
-  return resArr;
+function sortTotalByLargeToSmall() {
+  bikes.value = datas.value.sort(function (a, b) {
+    return b.total - a.total;
+  });
+}
+
+function sortAvailableRentBysmallToLarge() {
+  bikes.value = datas.value.sort(function (a, b) {
+    return a.available_rent_bikes - b.available_rent_bikes;
+  });
+}
+
+function sortAvailableRentByLargeToSmall() {
+  bikes.value = datas.value.sort(function (a, b) {
+    return b.available_rent_bikes - a.available_rent_bikes;
+  });
 }
 </script>
 
