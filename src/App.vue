@@ -126,6 +126,52 @@
 import axiosApi from 'axios';
 import { ref, onMounted, watch, computed } from 'vue';
 
+const bikeInfo = ref([]);
+
+// 取得YouBike資料
+const getBikeInfo = async () => {
+  const response = await axiosApi.get(
+    'https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json'
+  );
+
+  bikeInfo.value = response.data;
+  console.log(bikeInfo.value);
+};
+
+onMounted(async () => {
+  await getBikeInfo();
+});
+
+// 關鍵字搜尋
+const searchAr = ref('');
+const bikeinfoFilterBySearchAr = computed(() => {
+  return bikeInfo.value.filter((item) => item.ar.includes(searchAr.value));
+});
+
+//透過關鍵字模糊查詢
+const keyWord = ref('');
+watch(
+  //要監聽的物件
+  () => keyWord.value,
+  //監聽到後要實作的方法
+  () => {
+    current.value = 1;
+    bikes.value = datas.value.filter((data) => data.ar.includes(keyWord.value));
+  }
+);
+
+//關鍵字 Highlight
+const heightligthAr = (ar) => {
+  if (searchAr.value) {
+    return ar.replace(
+      searchAr.value,
+      `<span class="text-red-500 font-bold">${searchAr.value}</span>`
+    );
+  } else {
+    return ar;
+  }
+};
+
 //動態獲取資料
 async function getData() {
   try {
@@ -174,14 +220,12 @@ const current = ref(1);
 const pages = ref(0);
 
 //每 25筆原始資料成為一個 paginatedData(動態)
-const paginatedData = ref(
-  computed(() => {
-    if (bikes.value) {
-      return bikes.value.slice((current.value - 1) * rows.value, current.value * rows.value);
-    }
-    return bikes.value;
-  })
-);
+const paginatedData = computed(() => {
+  if (bikes.value) {
+    return bikes.value.slice((current.value - 1) * rows.value, current.value * rows.value);
+  }
+  return bikes.value;
+});
 
 //下一頁
 const nextPage = () => {
@@ -216,82 +260,32 @@ const lastPage = () => {
   }
 };
 
-const start = ref(
-  computed(() => {
-    // 設定條件：如果 current.value + 10 會小於總頁數，那就讓 start = current.value
-    if (current.value + 10 <= Math.ceil(bikes.value.length / rows.value)) {
-      return current.value;
-
-      // 如果會大於總頁數的話，那就讓 start = 總頁數-9 (從後面往前算10頁)
-    } else if (
-      current.value + 10 > Math.ceil(bikes.value.length / rows.value) ||
-      current.value === Math.ceil(bikes.value.length / rows.value)
-    ) {
-      return Math.ceil(bikes.value.length / rows.value) - 9;
-    }
+const start = computed(() => {
+  // 設定條件：如果 current.value + 10 會小於總頁數，那就讓 start = current.value
+  if (current.value + 10 <= Math.ceil(bikes.value.length / rows.value)) {
     return current.value;
-  })
-);
 
-const end = ref(
-  computed(() => {
-    if (current.value + 10 <= Math.ceil(bikes.value.length / rows.value)) {
-      return current.value + 9;
-    } else if (
-      current.value + 10 > Math.ceil(bikes.value.length / rows.value) ||
-      current.value === Math.ceil(bikes.value.length / rows.value)
-    ) {
-      return Math.ceil(bikes.value.length / rows.value);
-    }
-    return current.value;
-  })
-);
-
-//模糊查詢的關鍵字
-const keyWord = ref('');
-
-// onMounted(function () {
-//   axiosApi
-//     .get('https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json')
-//     .then(function (response) {
-//       totalbike.value = response.data.length;
-
-//     })
-//     .catch(function (error) {
-//       console.log(error);
-//     });
-// });
-
-// function callFindAllBikeStoreList(page) {
-//   console.log('call callFindAllBikeStoreList', page);
-
-//   if (page) {
-//     start.value = (page - 1) * rows.value;
-//     current.value = page;
-//   } else {
-//     start.value = 0;
-//     current.value = 1;
-//   }
-
-//   bikes.value = datas.value.slice(start.value, rows.value + 1);
-
-//   //分頁
-
-//   pages.value = Math.ceil(datas.value.length / rows.value);
-//   lastPageRows.value = datas.value.length % rows.value;
-// }
-
-//透過關鍵字搜尋
-watch(
-  //要監聽的物件
-  () => keyWord.value,
-  //監聽到後要實作的方法
-  () => {
-    current.value = 1;
-    console.log(keyWord.value);
-    bikes.value = datas.value.filter((data) => data.ar.includes(keyWord.value));
+    // 如果會大於總頁數的話，那就讓 start = 總頁數-9 (從後面往前算10頁)
+  } else if (
+    current.value + 10 > Math.ceil(bikes.value.length / rows.value) ||
+    current.value === Math.ceil(bikes.value.length / rows.value)
+  ) {
+    return Math.ceil(bikes.value.length / rows.value) - 9;
   }
-);
+  return current.value;
+});
+
+const end = computed(() => {
+  if (current.value + 10 <= Math.ceil(bikes.value.length / rows.value)) {
+    return current.value + 9;
+  } else if (
+    current.value + 10 > Math.ceil(bikes.value.length / rows.value) ||
+    current.value === Math.ceil(bikes.value.length / rows.value)
+  ) {
+    return Math.ceil(bikes.value.length / rows.value);
+  }
+  return current.value;
+});
 
 //根據 total 數量排序 (小到大)
 function sortTotalBysmallToLarge() {
